@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
@@ -14,20 +15,21 @@ namespace ImgImpExp.Controllers
     [RoutePrefix("api/images")]
     public class ImagesController : ApiController
     {
-        SqlConnection sqlConnection;
+        readonly SqlConnection sqlConnection;
         SqlDataAdapter sqlDataAdapter;
         SqlCommand sqlCommand;
         DataSet dataSet;
 
         public ImagesController()
         {
-            sqlConnection = new SqlConnection("Data Source=192.168.0.100;Initial Catalog=RosettaWebApi;user id=sa;password=123456");
+            sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["connectionString"].ConnectionString);
         }
         // GET: api/Images
         [Route("")]
         public IHttpActionResult GetImages()
         {
-            sqlCommand = new SqlCommand("select * from tbl_Image", sqlConnection);
+            sqlConnection.Open();
+            sqlCommand = new SqlCommand("select * from tbl_Image");
             sqlDataAdapter = new SqlDataAdapter(sqlCommand);
             dataSet = new DataSet();
 
@@ -58,7 +60,8 @@ namespace ImgImpExp.Controllers
         [Route("{id}")]
         public IHttpActionResult GetImages(int id)
         {
-            sqlCommand = new SqlCommand("select * from tbl_Image where Id =" + id, sqlConnection);
+            sqlConnection.Open();
+            sqlCommand = new SqlCommand("select * from tbl_Image where Id =" + id);
             sqlDataAdapter = new SqlDataAdapter(sqlCommand);
             dataSet = new DataSet();
 
@@ -89,7 +92,8 @@ namespace ImgImpExp.Controllers
         [HttpPost,Route("")]
         public IHttpActionResult PostImages(ImageData imageData)
         {
-            sqlCommand = new SqlCommand("insert into tbl_image values(@image)", sqlConnection);
+            sqlConnection.Open();
+            sqlCommand = new SqlCommand("insert into tbl_image values(@image)");
             sqlCommand.Parameters.AddWithValue("@image", imageData.Image);
 
             try

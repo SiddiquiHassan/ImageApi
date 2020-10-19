@@ -2,12 +2,10 @@
 using ImgImpExp.Models;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Cors;
 using System.Web.Http.Description;
@@ -18,20 +16,20 @@ namespace ImgImpExp.Controllers
     [EnableCors(origins: "*", headers: "*", methods: "*")]
     public class EmployeesController : ApiController
     {
-        SqlConnection sqlConnection;
+        readonly SqlConnection sqlConnection;
         SqlCommand sqlCommand;
         SqlDataAdapter sqlDataAdapter;
         DataSet dataSet;
 
         public EmployeesController()
         {
-            sqlConnection = null;
+            sqlConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["connectionString"].ConnectionString);
             sqlCommand = null;
             sqlDataAdapter = null;
             dataSet = null;
         }
 
-        
+
         [HttpGet, Route("")]
         public IHttpActionResult GetEmployees()
         {
@@ -53,30 +51,33 @@ namespace ImgImpExp.Controllers
             }
             catch (Exception)
             {
-                return NotFound();
+                throw;
+                //return NotFound();
             }
         }
 
         [HttpGet, Route("{id}")]
         [ResponseType(typeof(EmployeesDto))]
-        public IHttpActionResult GetEmployee([FromUri]int id)
+        public IHttpActionResult GetEmployee([FromUri] int id)
         {
             try
             {
                 var dt = GetDataSet(id).Tables[0];
                 var employee = from row in dt.AsEnumerable()
-                                select new EmployeesDto()
-                                {
-                                    Name = row["Name"].ToString(),
-                                    Age = int.Parse(row["Age"].ToString()),
-                                    Address = row["Address"].ToString(),
-                                    PhoneNo = int.Parse(row["PhoneNo"].ToString())
-                                };
+                               select new EmployeesDto()
+                               {
+                                   Name = row["Name"].ToString(),
+                                   Age = int.Parse(row["Age"].ToString()),
+                                   Address = row["Address"].ToString(),
+                                   PhoneNo = int.Parse(row["PhoneNo"].ToString())
+                               };
+                //return Ok(GetDataSet(id));
                 return Ok(employee);
             }
             catch (Exception)
             {
-                return NotFound();
+                throw;
+                //return NotFound();
             }
         }
 
@@ -87,8 +88,8 @@ namespace ImgImpExp.Controllers
             {
                 if (emp != null)
                 {
-                    sqlConnection = new SqlConnection("Data Source=localhost;Initial Catalog=RosettaWebApi;user id=sa;password=123456");
-                    sqlCommand = new SqlCommand("insert into tbl_emp values(@name,@age,@address,@phoneNo,@image)", sqlConnection);
+                    sqlCommand = new SqlCommand("insert into tbl_emp values(@name,@age,@address,@phoneNo,@image)");
+                    sqlCommand.Connection = sqlConnection;
                     sqlCommand.Parameters.AddWithValue("@name", emp.Name);
                     sqlCommand.Parameters.AddWithValue("@age", emp.Age);
                     sqlCommand.Parameters.AddWithValue("@address", emp.Address);
@@ -109,7 +110,8 @@ namespace ImgImpExp.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                throw;
+                //return BadRequest(ex.Message);
             }
             finally
             {
@@ -119,33 +121,37 @@ namespace ImgImpExp.Controllers
             }
         }
 
+        [DisableCors]
         [NonAction]
         private DataSet GetDataSet(int? id)
         {
-            sqlConnection = new SqlConnection("Data Source=localhost;Initial Catalog=RosettaWebApi;user id=sa;password=123456");
             dataSet = new DataSet();
             sqlDataAdapter = new SqlDataAdapter();
             try
             {
-                if(id == null)
+                if (id == null)
                 {
-                    sqlCommand = new SqlCommand("select * from tbl_emp", sqlConnection);
+                    sqlCommand = new SqlCommand("select * from tbl_emp");
+                    sqlCommand.Connection = sqlConnection;
+                    sqlConnection.Open();
                     sqlDataAdapter.SelectCommand = sqlCommand;
                     sqlDataAdapter.Fill(dataSet, "employees");
 
-                    if (validateDataSet(dataSet))
-                            return dataSet;
+                    if (ValidateDataSet(dataSet))
+                        return dataSet;
                     else
                         return null;
                 }
                 else
                 {
-                    sqlCommand = new SqlCommand("select * from tbl_emp where id = @id", sqlConnection);
+                    sqlCommand = new SqlCommand("select * from tbl_emp where id = @id");
+                    sqlCommand.Connection = sqlConnection;
+                    sqlConnection.Open();
                     sqlCommand.Parameters.AddWithValue("@id", id);
                     sqlDataAdapter.SelectCommand = sqlCommand;
                     sqlDataAdapter.Fill(dataSet, "employees");
 
-                    if (validateDataSet(dataSet))
+                    if (ValidateDataSet(dataSet))
                         return dataSet;
                     else
                         return null;
@@ -166,8 +172,9 @@ namespace ImgImpExp.Controllers
             }
         }
 
+        [DisableCors]
         [NonAction]
-        private bool validateDataSet(DataSet dataSet)
+        private bool ValidateDataSet(DataSet dataSet)
         {
             if (dataSet != null)
                 if (dataSet.Tables[0].Rows.Count != 0)
